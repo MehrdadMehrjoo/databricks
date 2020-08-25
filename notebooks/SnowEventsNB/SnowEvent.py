@@ -11,7 +11,7 @@ processFromDate = processFromDate.replace("T", " ")
 processFromDate = processFromDate.replace("Z", "")
 processToDate = processToDate.replace("T", " ")
 processToDate = processToDate.replace("Z", "")
-
+print ("Start")
 print (processFromDate)
 print (processToDate)
 
