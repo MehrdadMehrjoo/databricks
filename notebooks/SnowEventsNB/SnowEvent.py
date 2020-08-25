@@ -93,7 +93,7 @@ ReferenceDataFolderName ="/mnt/" +mountNameReferenceData + "/DailyUsqlTable/" ;
 
 # COMMAND ----------
 
-  n = 0 
+n = 0 
 def getLatestSites():
   global n 
   if(fileExists(ReferenceDataFolderName + UtcDate(n) + "/dbo.SitesAll_Usql")):
@@ -191,10 +191,11 @@ else :
 
 # COMMAND ----------
 
-#qry = 'CREATE OR REPLACE TEMPORARY VIEW snowEventTempCSV (rw STRING,id int ,Region STRING,FSA STRING,LDU STRING,StartDate TIMESTAMP,EndDate TIMESTAMP,TotalLocationCount int ,LocationCount int ,SubmissionCount int ,CalculatinDate TIMESTAMP,LastSubmissionDate TIMESTAMP,NextEventId int,NextEventDate TIMESTAMP,Status STRING,SubmissionFile STRING,sitesFile STRING, Vendor STRING , VendorName STRING,Action STRING) USING CSV OPTIONS (path "{}", header "true", mode "FAILFAST",sep ",")'.format(snowEventCsv)
+#qry = 'CREATE OR REPLACE TEMPORARY VIEW snowEventTempCSV (rw STRING,SnowYear int,id int ,Region STRING,FSA STRING,LDU STRING,StartDate TIMESTAMP,EndDate TIMESTAMP,TotalLocationCount int ,LocationCount int ,SubmissionCount int ,CalculatinDate TIMESTAMP,LastSubmissionDate TIMESTAMP,NextEventId int,NextEventDate TIMESTAMP,Status STRING,SubmissionFile STRING,sitesFile STRING, Vendor STRING , VendorName STRING,Action STRING) USING CSV OPTIONS (path "{}", header "true", mode "FAILFAST",sep ",")'.format(snowEventCsv)
 #print("dbfs:" + snowEventCsv)
 #print(qry)
 #sqlContext.sql(qry)
+
 
 # COMMAND ----------
 
@@ -204,11 +205,11 @@ else :
 # COMMAND ----------
 
 #try:
-    #qry = 'insert into SnowEvent Select * from snowEventTemp'
-    #qry = 'insert into SnowEvent Select id ,Region,FSA ,LDU ,StartDate ,EndDate ,TotalLocationCount ,LocationCount  ,SubmissionCount ,CalculatinDate ,LastSubmissionDate ,NextEventId ,NextEventDate ,Status ,SubmissionFile,sitesFile,Vendor,VendorName,Action from snowEventTempCSV'
-    #sqlContext.sql(qry)
+#    #qry = 'insert into SnowEvent Select * from snowEventTemp'
+#    qry = 'insert into SnowEvent Select SnowYear,id ,Region,FSA ,LDU ,StartDate ,EndDate ,TotalLocationCount ,LocationCount  ,SubmissionCount ,CalculatinDate ,LastSubmissionDate ,NextEventId ,NextEventDate ,Status ,SubmissionFile,sitesFile,Vendor,VendorName,Action from snowEventTempCSV'
+#    sqlContext.sql(qry)
 #except:
-    #print('No data')
+#    print('No data')
 
 # COMMAND ----------
 
@@ -239,7 +240,7 @@ sqlContext.sql(qry)
 
 # COMMAND ----------
 
-qry = 'CREATE  OR REPLACE TEMPORARY VIEW submissionsSnowYear As SELECT * from ( Select distinct * from submissions where datetakenutc is not null) as ss where  replace((left(ss.EventProcessedUtcTime,19)),"T", " ") >= "{0}" and replace((left(ss.EventProcessedUtcTime,19)),"T", " ") < "{1}" AND ss.datetakenutc >= "{2}" and ss.datetakenutc <= "{3}"'.format(processFromDate,processToDate,snowYearStart,snowYearEnd)
+qry = 'CREATE  OR REPLACE TEMPORARY VIEW submissionsSnowYear As SELECT * from ( Select distinct * from submissions where  datetakenutc is not null) as ss where  replace((left(ss.EventProcessedUtcTime,19)),"T", " ") >= "{0}" and replace((left(ss.EventProcessedUtcTime,19)),"T", " ") < "{1}" AND ss.datetakenutc >= "{2}" and ss.datetakenutc <= "{3}"'.format(processFromDate,processToDate,snowYearStart,snowYearEnd)
 print(qry)
 sqlContext.sql(qry)
 
@@ -301,7 +302,9 @@ def InsertSnowEvent(inSnowYear ,inRegion,inFSA,inLDU,inDatetakenDH,SubmissionCou
   totalLocation,Region = getTotalLocation(inFSA,inLDU,inDatetakenDH);
   vendor,vendorName = getVendor(inFSA,inLDU,inDatetakenDH);
   
-  maxIdQuery = 'Select ifnull(max(id),0) as  maxId from snowEvent where SnowYear={} and Region="{}" and FSA="{}" and ifnull(LDU,"") ="{}"'.format(inSnowYear , inRegion, inFSA,inLDU)
+  maxIdQuery = 'Select ifnull(max(id),0) as  maxId from snowEvent where SnowYear={} and ltrim(rtrim(Region))="{}" and FSA="{}" and ifnull(LDU,"") ="{}"'.format(inSnowYear , inRegion, inFSA,inLDU)
+  print("getMax")
+  print(maxIdQuery)
   df = sqlContext.sql(maxIdQuery)
   result_pdf = df.select("maxId").toPandas()
   maxId = result_pdf.iloc[0][0] +1 
@@ -366,7 +369,7 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   print(SubmissionCount)
   
   
-  DeleteQueryDetail = 'Delete from SnowEventDetails Where SnowYear={0} AND id ={1} AND Region="{2}" and ltrim(rtrim(FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(FSA)),2,1) = "0" Then  ifnull(LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU)
+  DeleteQueryDetail = 'Delete from SnowEventDetails Where SnowYear={0} AND id ={1} AND ltrim(rtrim(Region))="{2}" and ltrim(rtrim(FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(FSA)),2,1) = "0" Then  ifnull(LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU)
     
   print(DeleteQueryDetail)
   sqlContext.sql(DeleteQueryDetail)
@@ -430,35 +433,35 @@ def UpdateSnowEvent(actType ,snowId,inSnowYear , inRegion, inFSA,inLDU,startDate
   
   if (actType == "updateCount") :
     SubmissionCount , LocationCount , SubmissionFile , siteFile = setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLDU,inSnowYear , inRegion)
-    updatquery = 'UPDATE SnowEvent SET TotalLocationCount = {0} , LocationCount={1}, SubmissionCount = {2}, CalculatinDate="{3}" , LastSubmissionDate = "{4}" ,SubmissionFile ="{5}" ,SitesFile ="{6}" ,Action = "{12}" WHERE id = {7} AND FSA="{8}" AND ifnull(LDU,"") = "{9}" and SnowYear ={10} and Region="{11}"'.format(totalLocation,LocationCount, SubmissionCount, UtcNow(), lastSubmissionDate, SubmissionFile, siteFile, snowId, inFSA, inLDU, inSnowYear , inRegion, action)
+    updatquery = 'UPDATE SnowEvent SET TotalLocationCount = {0} , LocationCount={1}, SubmissionCount = {2}, CalculatinDate="{3}" , LastSubmissionDate = "{4}" ,SubmissionFile ="{5}" ,SitesFile ="{6}" ,Action = "{7}" WHERE id = {8} AND FSA="{9}" AND ifnull(LDU,"") = "{10}" and SnowYear ={11} and ltrim(rtrim(Region))="{12}"'.format(totalLocation,LocationCount, SubmissionCount, UtcNow(), lastSubmissionDate, SubmissionFile, siteFile, action, snowId, inFSA, inLDU, inSnowYear , inRegion)
     print(updatquery)
     sqlContext.sql(updatquery)
     
   if (actType == "updateEndDateAndNextEvent") :
     SubmissionCount , LocationCount , SubmissionFile , siteFile = setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLDU,inSnowYear , inRegion)
-    updatquery = 'UPDATE SnowEvent SET TotalLocationCount = {0} , LocationCount={1}, SubmissionCount = {2}, CalculatinDate="{3}" , LastSubmissionDate = "{4}" ,EndDate = {5} , NextEventId={6}, NextEventDate = {7} ,SubmissionFile = "{8}" ,sitesFile="{15}" ,Action = "{12}" WHERE id = {10} AND FSA="{11}" AND ifnull(LDU,"") = "{12}" and SnowYear ={13} and Region="{14}"'.format(totalLocation,LocationCount, SubmissionCount , UtcNow() , lastSubmissionDate , endDatestr , nextEventIdstr , nextEventDatestr,SubmissionFile,siteFile,snowId,inFSA,inLDU,inSnowYear , inRegion , action)
+    updatquery = 'UPDATE SnowEvent SET TotalLocationCount = {0} , LocationCount={1}, SubmissionCount = {2}, CalculatinDate="{3}" , LastSubmissionDate = "{4}" ,EndDate = {5} , NextEventId={6}, NextEventDate = {7} ,SubmissionFile = "{8}" ,sitesFile="{9}" ,Action = "{10}" WHERE id = {11} AND FSA="{12}" AND ifnull(LDU,"") = "{13}" and SnowYear ={14} and ltrim(rtrim(Region))="{15}"'.format(totalLocation,LocationCount, SubmissionCount , UtcNow() , lastSubmissionDate , endDatestr , nextEventIdstr , nextEventDatestr,SubmissionFile,siteFile, action,snowId,inFSA,inLDU,inSnowYear , inRegion )
     print(updatquery)
     sqlContext.sql(updatquery)
     
   if (actType == "updateStartDateAndEndDateAndNextEvent") :
     SubmissionCount , LocationCount , SubmissionFile , siteFile = setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLDU,inSnowYear , inRegion)
-    updatquery = 'UPDATE SnowEvent SET StartDate ="{0}" TotalLocationCount = {1} , LocationCount={2}, SubmissionCount = {3}, CalculatinDate="{4}" , LastSubmissionDate = "{5}" ,EndDate = {6} , NextEventId={7}, NextEventDate = {8} ,SubmissionFile ="{9}" ,SitesFile ="{10}" ,Action = "{16}" WHERE id = {11} AND FSA="{12}" AND ifnull(LDU,"") = "{13}" and SnowYear ={14} and Region="{15}"'.format(startDate,totalLocation, LocationCount, SubmissionCount ,UtcNow(), lastSubmissionDate, endDatestr , nextEventIdstr , nextEventDatestr,SubmissionFile ,siteFile , snowId , inFSA , inLDU,inSnowYear , inRegion , action)
+    updatquery = 'UPDATE SnowEvent SET StartDate ="{0}" TotalLocationCount = {1} , LocationCount={2}, SubmissionCount = {3}, CalculatinDate="{4}" , LastSubmissionDate = "{5}" ,EndDate = {6} , NextEventId={7}, NextEventDate = {8} ,SubmissionFile ="{9}" ,SitesFile ="{10}" ,Action = "{11}" WHERE id = {12} AND FSA="{13}" AND ifnull(LDU,"") = "{14}" and SnowYear ={15} and ltrim(rtrim(Region))="{16}"'.format(startDate,totalLocation, LocationCount, SubmissionCount ,UtcNow(), lastSubmissionDate, endDatestr , nextEventIdstr , nextEventDatestr,SubmissionFile ,siteFile , action, snowId , inFSA , inLDU,inSnowYear , inRegion )
     print(updatquery)
     sqlContext.sql(updatquery)
     
   if (actType == "updateNextEventDateOnly") :
-    updatquery = 'UPDATE SnowEvent SET  NextEventDate = {0} , CalculatinDate="{1}" ,Action ="{7}" WHERE id = {2} AND FSA="{3}" AND ifnull(LDU,"") = "{4}" and SnowYear ={5} and Region="{6}"'.format(nextEventDatestr ,UtcNow() , snowId , inFSA , inLDU,inSnowYear , inRegion, action)
+    updatquery = 'UPDATE SnowEvent SET  NextEventDate = {0} , CalculatinDate="{1}" ,Action ="{2}" WHERE id = {3} AND FSA="{4}" AND ifnull(LDU,"") = "{5}" and SnowYear ={6} and ltrim(rtrim(Region))="{7}"'.format(nextEventDatestr ,UtcNow() , action, snowId , inFSA , inLDU,inSnowYear , inRegion)
     print(updatquery)
     sqlContext.sql(updatquery)
     
   if (actType == "updateStartDateAndCount") :
     SubmissionCount , LocationCount , SubmissionFile , siteFile = setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLDU,inSnowYear , inRegion)
-    updatquery = 'UPDATE SnowEvent SET StartDate ="{0}" , TotalLocationCount = {1} , LocationCount={2}, SubmissionCount = {3}, CalculatinDate="{4}" , LastSubmissionDate = "{5}" , SubmissionFile ="{6}",SitesFile ="{7}" ,Action = "{13}" WHERE id = {8} AND FSA="{9}" AND ifnull(LDU,"") = "{10}" and SnowYear ={11} and Region="{12}"'.format( startDate, totalLocation, LocationCount, SubmissionCount ,UtcNow(), lastSubmissionDate, SubmissionFile ,siteFile  , snowId , inFSA , inLDU,inSnowYear , inRegion , action)
+    updatquery = 'UPDATE SnowEvent SET StartDate ="{0}" , TotalLocationCount = {1} , LocationCount={2}, SubmissionCount = {3}, CalculatinDate="{4}" , LastSubmissionDate = "{5}" , SubmissionFile ="{6}",SitesFile ="{7}" ,Action = "{8}" WHERE id = {9} AND FSA="{10}" AND ifnull(LDU,"") = "{11}" and SnowYear ={12} and ltrim(rtrim(Region))="{13}"'.format( startDate, totalLocation, LocationCount, SubmissionCount ,UtcNow(), lastSubmissionDate, SubmissionFile ,siteFile  , action, snowId , inFSA , inLDU,inSnowYear , inRegion )
     print(updatquery)
     sqlContext.sql(updatquery)
     
   if (actType == "Merged") :
-    updatquery = 'UPDATE SnowEvent SET Status ="{0}" ,Action = "{6}"  WHERE id = {1} AND FSA="{2}" AND ifnull(LDU,"") = "{3}" and SnowYear ={4} and Region="{5}"'.format(actType, snowId, inFSA,inLDU,inSnowYear , inRegion , action)
+    updatquery = 'UPDATE SnowEvent SET Status ="{0}" ,Action = "{1}"  WHERE id = {2} AND FSA="{3}" AND ifnull(LDU,"") = "{4}" and SnowYear ={5} and ltrim(rtrim(Region))="{5}"'.format(actType, action, snowId, inFSA,inLDU,inSnowYear , inRegion )
     print(updatquery)
     sqlContext.sql(updatquery)
     
