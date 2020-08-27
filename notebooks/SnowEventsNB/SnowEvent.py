@@ -200,6 +200,7 @@ else :
 # COMMAND ----------
 
 #sqlContext.sql("Truncate table SnowEvent")
+#sqlContext.sql("Truncate table SnowEventDetails")
 
 
 # COMMAND ----------
@@ -460,6 +461,7 @@ def UpdateSnowEvent(actType ,snowId,inSnowYear , inRegion, inFSA,inLDU,startDate
     print(updatquery)
     sqlContext.sql(updatquery)
     
+    
   if (actType == "Merged") :
     updatquery = 'UPDATE SnowEvent SET Status ="{0}" ,Action = "{1}"  WHERE id = {2} AND FSA="{3}" AND ifnull(LDU,"") = "{4}" and SnowYear ={5} and ltrim(rtrim(Region))="{5}"'.format(actType, action, snowId, inFSA,inLDU,inSnowYear , inRegion )
     print(updatquery)
@@ -484,9 +486,24 @@ def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,Submis
     if( number_of_rows > 1 )  :
       print('Error')
     elif(number_of_rows == 0)  :
-      print('Insert SnowEvent (0)')
-      newId = InsertSnowEvent(inSnowYear , inRegion,inFSA, inLDU,inDatetakenDH,SubmissionCount,LocationCount,inlastSubmission,"null","null", "Insert SnowEvent (0)" )
-      print(newId)
+      selectCmdSnowEvent0 = 'SELECT * FROM SnowEvent where  SnowYear={} AND  ltrim(rtrim(Region))="{}" AND ltrim(rtrim(FSA))="{}" AND ltrim(rtrim(ifnull(LDU,""))) ="{}" AND ifnull(Status,"") = "" '.format(inSnowYear , inRegion,inFSA,inLDU)
+      print(selectCmdSnowEvent0)
+      df0= sqlContext.sql(selectCmdSnowEvent0)
+      number_of_rows0 = df0.count()
+      if(number_of_rows0 == 0):
+        print('Insert SnowEvent (0)')
+        newId = InsertSnowEvent(inSnowYear , inRegion,inFSA, inLDU,inDatetakenDH,SubmissionCount,LocationCount,inlastSubmission,"null","null", "Insert SnowEvent (0)" )
+      else:
+        result_pdf0 = df0.select("*").toPandas()
+        LastSubmissionDate0 = result_pdf0.iloc[0]["LastSubmissionDate"]
+        snowId0 = result_pdf0.iloc[0]["id"]
+        startDate0 = result_pdf0.iloc[0]["StartDate"]
+        if(StrToDate(inlastSubmission) + timedelta(hours=24) < LastSubmissionDate0 ):
+          print("Insert SnowEvent (10)")
+          newId = InsertSnowEvent(inSnowYear , inRegion, inFSA,inLDU, inDatetakenDH, SubmissionCount, LocationCount, inlastSubmission, snowId0, startDate0 ,"Insert SnowEvent (10)")
+        else:
+          print("Update SnowEvent (11)")
+          UpdateSnowEvent("updateStartDateAndCount",snowId0,inSnowYear , inRegion,inFSA,inLDU, inDatetakenDH , LastSubmissionDate0 ,0,"null","null", "Update SnowEvent (11)")
     else :  
       print('Update_1')
       result_pdf = df.select("*").toPandas()
@@ -572,10 +589,6 @@ def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,Submis
                     print(nextEventId)
                     print(nextEventDate)
                     newId = InsertSnowEvent(inSnowYear , inRegion, inFSA,inLDU, inDatetakenDH, SubmissionCount, LocationCount, inlastSubmission, nextEventId, nextEventDate ,"Insert SnowEvent (8)")
-                    #if(inDatetakenDH > lastSubmissionDate+ timedelta(hours=24)) :
-                    #    endDate = lastSubmissionDate+ timedelta(hours=24)
-                    #else :
-                    #      endDate = "null"
                     print(endDate)    
                     UpdateSnowEvent("updateEndDateAndNextEvent",snowId,inSnowYear , inRegion,inFSA,inLDU, startDate, lastSubmissionDate, newId, inDatetakenDH, endDate, "Update SnowEvent (8)") #updateNextEventDate
                   else :
