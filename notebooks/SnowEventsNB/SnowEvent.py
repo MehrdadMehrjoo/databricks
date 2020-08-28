@@ -317,7 +317,7 @@ def InsertSnowEvent(inSnowYear ,inRegion,inFSA,inLDU,inDatetakenDH,SubmissionCou
     InsertQuery = 'INSERT INTO TABLE snowEvent  Select {}, {},"{}","{}","{}","{}",null,{},{},{},"{}","{}",null,null,"","{}","{}","{}","{}","{}" '.format( inSnowYear,maxId,Region,inFSA,inLDU,inDatetakenDH,totalLocation,LocationCount ,SubmissionCount,UtcNow(),lastSubmission,SubmissionFile,sitesFile ,vendor,vendorName,action) #nextEventId,nextEventDate,
   else :
     endDate = StrToDate(lastSubmission)+ timedelta(hours=24)
-    InsertQuery = 'INSERT INTO TABLE snowEvent  Select {},{},"{}","{}","{}","{}","{}",{},{},{},"{}","{}",{},"{}","","{}","{}","{}","{}"" '.format(inSnowYear,maxId,Region,inFSA,inLDU,inDatetakenDH,endDate,totalLocation, LocationCount ,SubmissionCount, UtcNow(),lastSubmission ,nextEventId, nextEventDate ,SubmissionFile , sitesFile ,vendor,vendorName,action)
+    InsertQuery = 'INSERT INTO TABLE snowEvent  Select {},{},"{}","{}","{}","{}","{}",{},{},{},"{}","{}",{},"{}","","{}","{}","{}","{}","{}" '.format(inSnowYear,maxId,Region,inFSA,inLDU,inDatetakenDH,endDate,totalLocation, LocationCount ,SubmissionCount, UtcNow(),lastSubmission ,nextEventId, nextEventDate ,SubmissionFile , sitesFile ,vendor,vendorName,action)
   
   print(InsertQuery)
   sqlContext.sql(InsertQuery)
@@ -438,6 +438,12 @@ def UpdateSnowEvent(actType ,snowId,inSnowYear , inRegion, inFSA,inLDU,startDate
     print(updatquery)
     sqlContext.sql(updatquery)
     
+  if (actType == "updateCountEndDate") :
+    SubmissionCount , LocationCount , SubmissionFile , siteFile = setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLDU,inSnowYear , inRegion)
+    updatquery = 'UPDATE SnowEvent SET TotalLocationCount = {0} , LocationCount={1}, SubmissionCount = {2}, CalculatinDate="{3}" , LastSubmissionDate = "{4}" ,EndDate = {5} ,SubmissionFile ="{6}" ,SitesFile ="{7}" ,Action = "{8}" WHERE id = {9} AND FSA="{10}" AND ifnull(LDU,"") = "{11}" and SnowYear ={12} and ltrim(rtrim(Region))="{13}"'.format(totalLocation,LocationCount, SubmissionCount, UtcNow(), lastSubmissionDate , endDatestr, SubmissionFile, siteFile, action, snowId, inFSA, inLDU, inSnowYear , inRegion)
+    print(updatquery)
+    sqlContext.sql(updatquery)
+    
   if (actType == "updateEndDateAndNextEvent") :
     SubmissionCount , LocationCount , SubmissionFile , siteFile = setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLDU,inSnowYear , inRegion)
     updatquery = 'UPDATE SnowEvent SET TotalLocationCount = {0} , LocationCount={1}, SubmissionCount = {2}, CalculatinDate="{3}" , LastSubmissionDate = "{4}" ,EndDate = {5} , NextEventId={6}, NextEventDate = {7} ,SubmissionFile = "{8}" ,sitesFile="{9}" ,Action = "{10}" WHERE id = {11} AND FSA="{12}" AND ifnull(LDU,"") = "{13}" and SnowYear ={14} and ltrim(rtrim(Region))="{15}"'.format(totalLocation,LocationCount, SubmissionCount , UtcNow() , lastSubmissionDate , endDatestr , nextEventIdstr , nextEventDatestr,SubmissionFile,siteFile, action,snowId,inFSA,inLDU,inSnowYear , inRegion )
@@ -463,7 +469,7 @@ def UpdateSnowEvent(actType ,snowId,inSnowYear , inRegion, inFSA,inLDU,startDate
     
     
   if (actType == "Merged") :
-    updatquery = 'UPDATE SnowEvent SET Status ="{0}" ,Action = "{1}"  WHERE id = {2} AND FSA="{3}" AND ifnull(LDU,"") = "{4}" and SnowYear ={5} and ltrim(rtrim(Region))="{5}"'.format(actType, action, snowId, inFSA,inLDU,inSnowYear , inRegion )
+    updatquery = 'UPDATE SnowEvent SET Status ="{0}" ,Action = "{1}"  WHERE id = {2} AND FSA="{3}" AND ifnull(LDU,"") = "{4}" and SnowYear ={5} and ltrim(rtrim(Region))="{6}"'.format(actType, action, snowId, inFSA,inLDU,inSnowYear , inRegion )
     print(updatquery)
     sqlContext.sql(updatquery)
     
@@ -545,13 +551,13 @@ def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,Submis
           else:
             if (inDatetakenDH <= lastSubmissionDate) :
               print('Insert SnowEvent(5)')
-              if(inDatetakenDH > lastSubmissionDate+ timedelta(hours=24)) :
-                endDate = lastSubmissionDate+ timedelta(hours=24)
-              else :
-                endDate = "null"
+              #if(inDatetakenDH > lastSubmissionDate+ timedelta(hours=24)) :
+              endDate = lastSubmissionDate+ timedelta(hours=24)
+              #else :
+              #  endDate = "null"
               if (StrToDate(inlastSubmission) > lastSubmissionDate):
                 lastSubmissionDate =StrToDate(inlastSubmission)
-              UpdateSnowEvent("updateCount",snowId,inSnowYear , inRegion, inFSA, inLDU, startDate, lastSubmissionDate, nextEventId, nextEventDate, endDate, "Update SnowEvent (5)")
+              UpdateSnowEvent("updateCountEndDate",snowId,inSnowYear , inRegion, inFSA, inLDU, startDate, lastSubmissionDate, nextEventId, nextEventDate, endDate, "Update SnowEvent (5)")
             else:
               if (inDatetakenDH <= endDate) :
                   if (inDatetakenDH + timedelta(hours=24) <= nextEventDate) :
@@ -559,7 +565,7 @@ def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,Submis
                     if (StrToDate(inlastSubmission) > lastSubmissionDate):
                       lastSubmissionDate = StrToDate(inlastSubmission)
                     #if(inDatetakenDH > lastSubmissionDate+ timedelta(hours=24)) :
-                      endDate = lastSubmissionDate+ timedelta(hours=24)
+                    endDate = lastSubmissionDate+ timedelta(hours=24)
                     #else :
                     #  endDate = "null"
                     UpdateSnowEvent("updateEndDateAndNextEvent",snowId,inSnowYear , inRegion,inFSA,inLDU, startDate, lastSubmissionDate, nextEventId, nextEventDate, endDate , "Update SnowEvent (6)")#updateCountAndEndDate
@@ -575,10 +581,10 @@ def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,Submis
                       nextEventNextEventId = resultNxt_pdf.iloc[0]["NextEventId"]
                       print('------nextEventNextEventId-------' + str(nextEventNextEventId))
                       nextEventNextEventDate = resultNxt_pdf.iloc[0]["NextEventDate"]
-                      if(inDatetakenDH > lastSubmissionDate+ timedelta(hours=24)) :
-                        endDate = lastSubmissionDate+ timedelta(hours=24)
-                      else :
-                          endDate = "null"
+                      #if(inDatetakenDH > lastSubmissionDate+ timedelta(hours=24)) :
+                      endDate = lastSubmissionDate+ timedelta(hours=24)
+                      #else :
+                      #    endDate = "null"
                       UpdateSnowEvent("updateEndDateAndNextEvent",snowId,inSnowYear , inRegion, inFSA,inLDU, startDate, nextEventLastSubmissionDate, nextEventNextEventId, nextEventNextEventDate,endDate , "Update SnowEvent (7)") #updateCountAndEndDateAndNextEvent
                       UpdateSnowEvent("Merged",nextEventId,inSnowYear , inRegion,inFSA,inLDU, "null", "null","null","null","null" , "Update SnowEvent (Merged)")
                     else:
