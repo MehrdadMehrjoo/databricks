@@ -599,7 +599,7 @@ def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,Submis
                     UpdateSnowEvent("updateEndDateAndNextEvent",snowId,inSnowYear , inRegion,inFSA,inLDU, startDate, lastSubmissionDate, newId, inDatetakenDH, endDate, "Update SnowEvent (8)") #updateNextEventDate
                   else :
                     print('Insert SnowEvent(9)')
-                    UpdateSnowEvent("updateNextEventDateOnly",snowId,inSnowYear , inRegion, inFSA,inLDU, startDate, lastSubmissionDate, nextEventId ,inDatetakenDH, endDate)
+                    UpdateSnowEvent("updateNextEventDateOnly",snowId,inSnowYear , inRegion, inFSA,inLDU, startDate, lastSubmissionDate, nextEventId ,inDatetakenDH, endDate,"Update SnowEvent(9)")
                     selectCmdSnowEventNext9 = 'SELECT * FROM SnowEvent where ltrim(rtrim(FSA))="{}" AND ltrim(rtrim(ifnull(LDU,""))) ="{}" AND id={} '.format(inFSA,inLDU,nextEventId)
                     print(selectCmdSnowEventNext9)
                     dfNxt9= sqlContext.sql(selectCmdSnowEventNext9)
