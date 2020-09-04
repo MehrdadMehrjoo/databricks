@@ -259,7 +259,7 @@ sqlContext.sql(qry)
 
 # COMMAND ----------
 
-qry = 'CREATE  OR REPLACE  TEMPORARY VIEW submissionsProcessHourFSA As  Select * from (select sites.Region ,sites.FSA , Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end AS LDU, datetakenDH,      max(lastSubmission) as lastSubmission,       sum(SubmissionCount) as SubmissionCount,       sum(LocationCount) as LocationCount from submissionsProcessHour inner join sites on sites.Location = submissionsProcessHour.sitename  	Where 	sites.StartDate <= datetakenDH AND 	datetakenDH < ifnull(sites.EndDate ,"{0}" ) group by  sites.Region ,sites.FSA ,Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end ,datetakenDH ) as aa order by aa.Region , aa.FSA , aa.LDU,aa.datetakenDH'.format(maxDate)
+qry = 'CREATE  OR REPLACE  TEMPORARY VIEW submissionsProcessHourFSA As  Select * from (select sites.Region ,sites.FSA , Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end AS LDU, datetakenDH,      max(lastSubmission) as lastSubmission,       sum(SubmissionCount) as SubmissionCount,       sum(LocationCount) as LocationCount from submissionsProcessHour inner join sites on sites.Location = submissionsProcessHour.sitename  	Where 	cast(sites.StartDate as TIMESTAMP) <= cast(datetakenDH as TIMESTAMP) AND cast(datetakenDH as TIMESTAMP) <  cast(ifnull(sites.EndDate ,"{0}") as TIMESTAMP) group by  sites.Region ,sites.FSA ,Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end ,datetakenDH ) as aa order by aa.Region , aa.FSA , aa.LDU,aa.datetakenDH'.format(maxDate)
 print(qry)
 sqlContext.sql(qry)
 
@@ -267,7 +267,7 @@ sqlContext.sql(qry)
 # COMMAND ----------
 
 def getTotalLocation(inFSA,inLDU,inDatetakenDH):
-  qry = 'Select ifnull(min(Region),"") as Region ,  count(*) as TotalLocation from sites 	Where	ltrim(rtrim(FSA)) = "{}" and (Case when Substring(ltrim(rtrim(FSA)),2,1) = "0" Then  ifnull(LDU,"") else "" end) = "{}"  AND StartDate <= "{}" AND 	"{}" < ifnull(EndDate ,"{}" )'.format(inFSA,inLDU,inDatetakenDH,inDatetakenDH,maxDate)
+  qry = 'Select ifnull(min(Region),"") as Region ,  count(*) as TotalLocation from sites 	Where	ltrim(rtrim(FSA)) = "{}" and (Case when Substring(ltrim(rtrim(FSA)),2,1) = "0" Then  ifnull(LDU,"") else "" end) = "{}"  AND cast(StartDate as TIMESTAMP) <= cast("{}" as TIMESTAMP) AND cast("{}" as TIMESTAMP) < cast(ifnull(EndDate ,"{}") as TIMESTAMP)'.format( inFSA,inLDU,inDatetakenDH,inDatetakenDH,maxDate)
   df= sqlContext.sql(qry)
   result_pdf = df.select("*").toPandas()
   return result_pdf.iloc[0]["TotalLocation"] , result_pdf.iloc[0]["Region"]
@@ -277,7 +277,7 @@ def getTotalLocation(inFSA,inLDU,inDatetakenDH):
 def getVendor(inFSA,inLDU,inDatetakenDH):
   vendorId="0" 
   vendorName="Unassigned"
-  qry = 'Select * from FSAVendor Where	ltrim(rtrim(FSA)) = "{}" and ltrim(rtrim(ifnull(LDU,"")))="{}"  AND StartDate <= "{}" AND "{}" < ifnull(EndDate ,"{}" )'.format(inFSA.strip(),inLDU[0:2],inDatetakenDH,inDatetakenDH,maxDate)
+  qry = 'Select * from FSAVendor Where	ltrim(rtrim(FSA)) = "{}" and ltrim(rtrim(ifnull(LDU,"")))="{}"  AND cast(StartDate as TIMESTAMP) <= cast("{}" as TIMESTAMP) AND cast("{}" as TIMESTAMP) <  cast(ifnull(EndDate ,"{}") as TIMESTAMP)'.format(inFSA.strip(),inLDU[0:2],inDatetakenDH,inDatetakenDH,maxDate)
   df= sqlContext.sql(qry)
   number_of_rows = df.count()
   if(number_of_rows >= 1):
@@ -285,7 +285,7 @@ def getVendor(inFSA,inLDU,inDatetakenDH):
     vendorId = result_pdf.iloc[0]["Vendor"]
     vendorName = result_pdf.iloc[0]["VendorName"]
   else:
-    qry2 = 'Select * from FSAVendor Where	ltrim(rtrim(FSA)) = "{}" AND StartDate <= "{}" AND "{}" < ifnull(EndDate ,"{}" )'.format(inFSA.strip(),inDatetakenDH,inDatetakenDH,maxDate)
+    qry2 = 'Select * from FSAVendor Where	ltrim(rtrim(FSA)) = "{}" AND cast(StartDate as TIMESTAMP) <= cast("{}" as TIMESTAMP) AND cast("{}" as TIMESTAMP) < cast(ifnull(EndDate ,"{}" ) as TIMESTAMP)'.format(inFSA.strip(),inDatetakenDH,inDatetakenDH,maxDate)
     df2= sqlContext.sql(qry2)
     number_of_rows2 = df2.count()
     if(number_of_rows2 >= 1):
@@ -322,14 +322,14 @@ def InsertSnowEvent(inSnowYear ,inRegion,inFSA,inLDU,inDatetakenDH,SubmissionCou
   print(InsertQuery)
   sqlContext.sql(InsertQuery)
   
-  InsertQueryDetail = 'INSERT INTO TABLE SnowEventDetails Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissions where datetakenUTC>="{5}" AND datetakenUTC<= "{6}" group by sitename) as ss on sites.Location = ss.sitename  	Where 	sites.StartDate <= "{5}" AND "{5}" < ifnull(sites.EndDate ,"{7}")  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,maxId,inRegion,inFSA,inLDU,inDatetakenDH ,lastSubmission, maxDate)
+  InsertQueryDetail = 'INSERT INTO TABLE SnowEventDetails Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissions where datetakenUTC>="{5}" AND datetakenUTC<= "{6}" group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP) <= cast("{5}" as TIMESTAMP) AND cast("{5}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{7}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,maxId,inRegion,inFSA,inLDU,inDatetakenDH ,lastSubmission, maxDate)
     
   print(InsertQueryDetail)
   sqlContext.sql(InsertQueryDetail)
   
   
   
-  submissionQryIns = 'Select "{}" as SnowYear ,"{}" as SnowEventId, submissions.* from submissions inner join sites on sites.Location = submissions.sitename  	Where 	sites.StartDate <= datetakenUTC AND datetakenUTC < ifnull(sites.EndDate ,"{}")  AND ltrim(rtrim(sites.FSA)) = "{}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{}" AND datetakenUTC>="{}" AND datetakenUTC<= "{}"'.format(str(inSnowYear) ,maxId,maxDate,inFSA,inLDU,inDatetakenDH,lastSubmission)
+  submissionQryIns = 'Select "{}" as SnowYear ,"{}" as SnowEventId, submissions.* from submissions inner join sites on sites.Location = submissions.sitename  	Where cast(sites.StartDate as TIMESTAMP) <=  cast(datetakenUTC as TIMESTAMP) AND cast(datetakenUTC as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{}" AND cast(datetakenUTC as TIMESTAMP)>= cast("{}" as TIMESTAMP) AND cast(datetakenUTC as TIMESTAMP)<= cast("{}" as TIMESTAMP)'.format(str(inSnowYear) ,maxId,maxDate,inFSA,inLDU,inDatetakenDH,lastSubmission)
   dfSub = sqlContext.sql(submissionQryIns)
   print(submissionQryIns)
   result_pdf = dfSub.select("*").toPandas()
@@ -361,7 +361,7 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   print(qry)
   sqlContext.sql(qry)
 
-  sumquery = ' SELECT sum(SubmissionCount) as SubmissionCount, sum(LocationCount) as LocationCount from ( SELECT SiteName,ltrim(rtrim(sites.FSA)) as FSA,Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end as LDU, count(*) as SubmissionCount , 1 as LocationCount  FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where      sites.StartDate <= "{0}" AND 	"{0}" < ifnull(sites.EndDate ,"{1}" )  and ltrim(rtrim(sites.FSA)) ="{2}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{3}"   group by SiteName ,ltrim(rtrim(sites.FSA)),Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end )'.format(startDate,maxDate, inFSA,inLDU)
+  sumquery = ' SELECT sum(SubmissionCount) as SubmissionCount, sum(LocationCount) as LocationCount from ( SELECT SiteName,ltrim(rtrim(sites.FSA)) as FSA,Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end as LDU, count(*) as SubmissionCount , 1 as LocationCount  FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where   cast(sites.StartDate as TIMESTAMP) <= cast("{0}" as TIMESTAMP) AND 	cast("{0}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{1}" ) as TIMESTAMP)  and ltrim(rtrim(sites.FSA)) ="{2}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{3}"   group by SiteName ,ltrim(rtrim(sites.FSA)),Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end )'.format(startDate,maxDate, inFSA,inLDU)
   print(sumquery)
   df = sqlContext.sql(sumquery)
   result_pdf = df.select("*").toPandas()
@@ -375,13 +375,13 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   print(DeleteQueryDetail)
   sqlContext.sql(DeleteQueryDetail)
   print("---------")
-  InsertQueryDetail = 'INSERT INTO TABLE SnowEventDetails Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum where  group by sitename) as ss on sites.Location = ss.sitename  	Where 	sites.StartDate <= "{5}" AND "{5}" < ifnull(sites.EndDate ,"{6}")  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate)
+  InsertQueryDetail = 'INSERT INTO TABLE SnowEventDetails Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum where  group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP)<= cast("{5}" as TIMESTAMP)  AND cast("{5}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{6}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate)
   print('{0}-{1}-{2}-{3}-{4}-{5}-{6}'.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate))   
   print(InsertQueryDetail)
   sqlContext.sql(InsertQueryDetail)
   
   
-  subDetailquery = ' SELECT "{0}" as SnowYear ,"{1}" as SnowEventId, submissionsSum.* FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where    sites.StartDate <= "{2}" AND 	"{2}" < ifnull(sites.EndDate ,"{3}" )  and ltrim(rtrim(sites.FSA)) ="{4}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{5}" '.format(str(inSnowYear), str(snowId), startDate,maxDate, inFSA,inLDU)
+  subDetailquery = ' SELECT "{0}" as SnowYear ,"{1}" as SnowEventId, submissionsSum.* FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where   cast(sites.StartDate as TIMESTAMP) <= cast("{2}" as TIMESTAMP) AND 	cast("{2}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{3}") as TIMESTAMP)  and ltrim(rtrim(sites.FSA)) ="{4}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{5}" '.format(str(inSnowYear), str(snowId), startDate,maxDate, inFSA,inLDU)
   print(subDetailquery)
   
   SubmissionFile =  startDate.strftime('%Y_%m_%d_%H_%M') + "_" + inRegion + inFSA + inLDU +"_"+str(snowId)+".csv"
@@ -390,7 +390,7 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   result_pdf.to_csv("/dbfs"+snowEventSubmission + SubmissionFile)
   
   
-  siteQryIns = 'Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum  group by sitename) as ss on sites.Location = ss.sitename  	Where 	sites.StartDate <= "{5}" AND "{5}" < ifnull(sites.EndDate ,"{6}")  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate)
+  siteQryIns = 'Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum  group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP) <= cast("{5}" as TIMESTAMP) AND cast("{5}" as TIMESTAMP) <  cast(ifnull(sites.EndDate ,"{6}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate)
   print(siteQryIns)
   siteFile =  "site"+ startDate.strftime('%Y_%m_%d_%H_%M') + "_" + inRegion + inFSA + inLDU +"_"+str(snowId)+".csv"
   dfSubSite = sqlContext.sql(siteQryIns)
@@ -483,7 +483,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 def submissionsSnowEvent(inSnowYear , inRegion ,inFSA,inLDU,inDatetakenDH,SubmissionCount,LocationCount,inlastSubmission ):
-    selectCmdSnowEvent = 'SELECT * FROM SnowEvent where  SnowYear={} AND  ltrim(rtrim(Region))="{}" AND ltrim(rtrim(FSA))="{}" AND ltrim(rtrim(ifnull(LDU,""))) ="{}" AND ifnull(Status,"") = "" AND StartDate <= "{}" AND "{}" < (case when ifnull(NextEventDate,"") ="" then "{}" else NextEventDate end) '.format(inSnowYear , inRegion,inFSA,inLDU,inDatetakenDH,inDatetakenDH,maxDate)
+    selectCmdSnowEvent = 'SELECT * FROM SnowEvent where  SnowYear={} AND  ltrim(rtrim(Region))="{}" AND ltrim(rtrim(FSA))="{}" AND ltrim(rtrim(ifnull(LDU,""))) ="{}" AND ifnull(Status,"") = "" AND  cast(StartDate as TIMESTAMP) <= cast("{}" as TIMESTAMP) AND cast("{}" as TIMESTAMP) < cast((case when ifnull(NextEventDate,"") ="" then "{}" else NextEventDate end) as TIMESTAMP) '.format(inSnowYear , inRegion,inFSA,inLDU,inDatetakenDH,inDatetakenDH,maxDate)
     print(selectCmdSnowEvent)
     df= sqlContext.sql(selectCmdSnowEvent)
     number_of_rows = df.count()
