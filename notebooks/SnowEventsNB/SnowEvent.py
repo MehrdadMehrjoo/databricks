@@ -89,7 +89,7 @@ snowEventSite = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Sites/"
 
 ReferenceDataFolderName ="/mnt/" +mountNameReferenceData + "/DailyUsqlTable/" ;
 
-
+print(submissionInputPath)
 
 # COMMAND ----------
 
@@ -236,7 +236,7 @@ sqlContext.sql(qry)
 # COMMAND ----------
 
 qry = 'CREATE  OR REPLACE TEMPORARY VIEW submissions (id STRING ,CorrelationID STRING,SiteName STRING,fsa STRING,status STRING,latitude STRING,longitude STRING,siteface STRING,city STRING,Province STRING,region STRING,Address STRING,datetaken STRING,datetakenUTC STRING,CellNumber STRING,DeviceID STRING,UserName STRING,picture STRING,eventenqueuedutctime STRING,EventProcessedUtcTime STRING,PartitionId STRING,BlobName STRING,BlobLastModifiedUtcTime STRING,Accuracy STRING,UserSiteName STRING,PLatitude STRING,PLongitude STRING) USING CSV OPTIONS (path "{}" , header "false", mode "FAILFAST",sep "|")'.format(submissionInputPath)
-#print(qry)
+print(qry)
 sqlContext.sql(qry)
 
 # COMMAND ----------
@@ -361,7 +361,7 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   print(qry)
   sqlContext.sql(qry)
 
-  sumquery = ' SELECT sum(SubmissionCount) as SubmissionCount, sum(LocationCount) as LocationCount from ( SELECT SiteName,ltrim(rtrim(sites.FSA)) as FSA,Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end as LDU, count(*) as SubmissionCount , 1 as LocationCount  FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where   cast(sites.StartDate as TIMESTAMP) <= cast("{0}" as TIMESTAMP) AND 	cast("{0}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{1}" ) as TIMESTAMP)  and ltrim(rtrim(sites.FSA)) ="{2}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{3}"   group by SiteName ,ltrim(rtrim(sites.FSA)),Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end )'.format(startDate,maxDate, inFSA,inLDU)
+  sumquery = ' SELECT sum(SubmissionCount) as SubmissionCount, sum(LocationCount) as LocationCount from ( SELECT SiteName,ltrim(rtrim(sites.FSA)) as FSA,Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end as LDU, count(*) as SubmissionCount , 1 as LocationCount  FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where   cast(sites.StartDate as TIMESTAMP) <= cast(datetakenutc as TIMESTAMP) AND 	cast(datetakenutc as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{0}" ) as TIMESTAMP)  and ltrim(rtrim(sites.FSA)) ="{1}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{2}"   group by SiteName ,ltrim(rtrim(sites.FSA)),Case when Substring(sites.FSA,2,1) = "0" Then  ifnull(sites.LDU,"") else "" end )'.format(maxDate, inFSA,inLDU)
   print(sumquery)
   df = sqlContext.sql(sumquery)
   result_pdf = df.select("*").toPandas()
@@ -375,13 +375,13 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   print(DeleteQueryDetail)
   sqlContext.sql(DeleteQueryDetail)
   print("---------")
-  InsertQueryDetail = 'INSERT INTO TABLE SnowEventDetails Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum where  group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP)<= cast("{5}" as TIMESTAMP)  AND cast("{5}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{6}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate)
+  InsertQueryDetail = 'INSERT INTO TABLE SnowEventDetails Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum where  group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP)<= cast({6} as TIMESTAMP)  AND cast({6} as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{5}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU , maxDate,startDate)
   print('{0}-{1}-{2}-{3}-{4}-{5}-{6}'.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate))   
   print(InsertQueryDetail)
   sqlContext.sql(InsertQueryDetail)
   
   
-  subDetailquery = ' SELECT "{0}" as SnowYear ,"{1}" as SnowEventId, submissionsSum.* FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where   cast(sites.StartDate as TIMESTAMP) <= cast("{2}" as TIMESTAMP) AND 	cast("{2}" as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{3}") as TIMESTAMP)  and ltrim(rtrim(sites.FSA)) ="{4}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{5}" '.format(str(inSnowYear), str(snowId), startDate,maxDate, inFSA,inLDU)
+  subDetailquery = ' SELECT "{0}" as SnowYear ,"{1}" as SnowEventId, submissionsSum.* FROM submissionsSum inner join sites on sites.Location = submissionsSum.sitename  	Where   cast(sites.StartDate as TIMESTAMP) <= cast(datetakenutc as TIMESTAMP) AND 	cast(datetakenutc as TIMESTAMP) < cast(ifnull(sites.EndDate ,"{2}") as TIMESTAMP)  and ltrim(rtrim(sites.FSA)) ="{3}" and Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end = "{4}" '.format(str(inSnowYear), str(snowId), maxDate, inFSA,inLDU)
   print(subDetailquery)
   
   SubmissionFile =  startDate.strftime('%Y_%m_%d_%H_%M') + "_" + inRegion + inFSA + inLDU +"_"+str(snowId)+".csv"
@@ -390,7 +390,7 @@ def setSubmissionSummery(snowId,startDate,lastSubmissionDate,maxDate, inFSA,inLD
   result_pdf.to_csv("/dbfs"+snowEventSubmission + SubmissionFile)
   
   
-  siteQryIns = 'Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum  group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP) <= cast("{5}" as TIMESTAMP) AND cast("{5}" as TIMESTAMP) <  cast(ifnull(sites.EndDate ,"{6}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU,startDate , maxDate)
+  siteQryIns = 'Select {0},{1},"{2}","{3}","{4}", sites.Province, sites.City,Address,Location,Lat,Long,SnowResponsibility,ss.lastDatetakenUTC from sites left join (select sitename,max(datetakenUTC) as lastDatetakenUTC  from submissionsSum  group by sitename) as ss on sites.Location = ss.sitename  	Where 	cast(sites.StartDate as TIMESTAMP) <= cast({6} as TIMESTAMP) AND cast({6} as TIMESTAMP) <  cast(ifnull(sites.EndDate ,"{5}") as TIMESTAMP)  AND ltrim(rtrim(sites.FSA)) = "{3}" AND (Case when Substring(ltrim(rtrim(sites.FSA)),2,1) = "0" Then  ifnull(sites.LDU,"") else "" end) ="{4}" '.format(inSnowYear,snowId,inRegion,inFSA,inLDU, maxDate,startDate)
   print(siteQryIns)
   siteFile =  "site"+ startDate.strftime('%Y_%m_%d_%H_%M') + "_" + inRegion + inFSA + inLDU +"_"+str(snowId)+".csv"
   dfSubSite = sqlContext.sql(siteQryIns)
@@ -626,6 +626,8 @@ for f in dfsubmissionsProcessHourFSA.collect():
   submissionsSnowEvent(curSnowYear, f.Region.strip() ,f.FSA.strip(), f.LDU.strip(), f.datetakenDH, f.SubmissionCount, f.LocationCount, f.lastSubmission  )
   #i = i+1
   #if(i ==1) : break
+  
+  #print(str(curSnowYear)+""+ f.Region.strip() +""+f.FSA.strip()+""+ f.LDU.strip()+""+ str(f.datetakenDH)+""+ str(f.SubmissionCount)+""+ str(f.LocationCount)+""+ str(f.lastSubmission)  )
 
 # COMMAND ----------
 
