@@ -36,15 +36,28 @@ else :
 # COMMAND ----------
 
 snowEventParq="/mnt/SnowEvent/2020/SnowEvent.parquet"
-df= sqlContext.sql("Select * from snowEvent")
-df.write.option("compression", "snappy").mode("overwrite").parquet(snowEventParq)  
+#df= sqlContext.sql("Select * from snowEvent")
+#df.write.option("compression", "snappy").mode("overwrite").parquet(snowEventParq)  
+try:
+  qry = 'CREATE OR REPLACE TEMPORARY VIEW snowEventTemp USING Parquet OPTIONS (path "{}")'.format("dbfs:" + snowEventParq)
+  #print(qry)
+  sqlContext.sql(qry)
+except:
+  print('No file')
 
 
 # COMMAND ----------
 
-snowEventParq="/mnt/SnowEvent/2020/SnowEventDetails.parquet"
-df= sqlContext.sql("Select * from SnowEventDetails")
-df.write.option("compression", "snappy").mode("overwrite").parquet(SnowEventDetailsParq)  
+SnowEventDetailsParq="/mnt/SnowEvent/2020/SnowEventDetails.parquet"
+#df= sqlContext.sql("Select * from SnowEventDetails")
+#df.write.option("compression", "snappy").mode("overwrite").parquet(SnowEventDetailsParq)  
+try:
+  qry = 'CREATE OR REPLACE TEMPORARY VIEW SnowEventDetailsTemp USING Parquet OPTIONS (path "{}")'.format("dbfs:" + SnowEventDetailsParq)
+  #print(qry)
+  sqlContext.sql(qry)
+except:
+  print('No file')
+
 
 
 # COMMAND ----------
@@ -70,3 +83,6 @@ df.write.option("compression", "snappy").mode("overwrite").parquet(SnowEventDeta
 
 # MAGIC %sql 
 # MAGIC Insert into SnowEventDetails select * from SnowEventDetailsTemp
+
+# COMMAND ----------
+
