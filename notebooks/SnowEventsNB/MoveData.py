@@ -1,22 +1,4 @@
 # Databricks notebook source
-dbutils.widgets.text("startdateparam", "","")
-dbutils.widgets.get("startdateparam")
-processFromDate = getArgument("startdateparam") #"2019-09-20 00:00:00.000"
-
-dbutils.widgets.text("enddateparam", "","")
-dbutils.widgets.get("enddateparam")
-processToDate = getArgument("enddateparam") #"2019-10-01 01:00:00.000"
-
-processFromDate = processFromDate.replace("T", " ")
-processFromDate = processFromDate.replace("Z", "")
-processToDate = processToDate.replace("T", " ")
-processToDate = processToDate.replace("Z", "")
-print ("Start job devops")
-print (processFromDate)
-print (processToDate)
-
-# COMMAND ----------
-
 applicationID = "360de2ed-ad16-48ae-bdd4-478a94b6aea1"
 directoryID = "983a9b43-747c-416a-bfa2-729b3d95a476"
 dbrickappdlSec = "AQ~-bKY7.-bMNS9tkekQJIJ06suTx..5C~"
@@ -30,32 +12,7 @@ mountNameSnowEvent = "SnowEvent"
 fileSystemName = "snow"
 dttr="'HOUR'"
 maxDate = "2030-01-01 01:00:00.000"
-submissionInputPath = "dbfs:/mnt/"+mountNameSubmissions+"/HourlyRaw/"+StrToDate(processFromDate).strftime('%Y')+"/" + StrToDate(processFromDate).strftime('%m')+ "/" + StrToDate(processFromDate).strftime('%d')+"/submissions-" + StrToDate(processFromDate).strftime('%Y-%m-%d-%H') +".txt"
 
-snowYear = getSnowYear(str(processFromDate))  
-
-snowYearStart = '{}-08-15 01:00:00.000'.format(str(snowYear-1))
-snowYearEnd = '{}-05-30 01:00:00.000'.format(str(snowYear))
-  
-submissionAllInputPath = "dbfs:/mnt/"+mountNameSubmissions+"/HourlyRaw/SnowYear"+str(snowYear)+"/" #*.txt
-
-
-snowEventParq = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEvent.parquet"
-snowEventCsv = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEvent.csv"
-
-snowEventCsvLog = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Log/SnowEvent"+ StrToDate(processFromDate).strftime('%Y_%m_%d_%H') +"_"+UtcNow().strftime('%Y_%m_%d_%H_%M')  +".csv"
-snowEventSubmission = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Submissions/"
-snowEventSite = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Sites/"
-
-
-SnowEventDetailsParq = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEventDetails.parquet"
-SnowEventDetailsCsv = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEventDetails.csv"
-
-SnowEventDetailsCsvLog = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEventDetails/SnowEventDetails"+ StrToDate(processFromDate).strftime('%Y_%m_%d_%H') +"_"+UtcNow().strftime('%Y_%m_%d_%H_%M')  +".csv"
-
-ReferenceDataFolderName ="/mnt/" +mountNameReferenceData + "/DailyUsqlTable/" ;
-
-print(submissionInputPath)
 
 # COMMAND ----------
 
