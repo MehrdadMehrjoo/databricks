@@ -11,7 +11,7 @@ processFromDate = processFromDate.replace("T", " ")
 processFromDate = processFromDate.replace("Z", "")
 processToDate = processToDate.replace("T", " ")
 processToDate = processToDate.replace("Z", "")
-print ("Start job")
+print ("Start job devops")
 print (processFromDate)
 print (processToDate)
 
@@ -86,6 +86,12 @@ snowEventCsv = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEvent.cs
 snowEventCsvLog = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Log/SnowEvent"+ StrToDate(processFromDate).strftime('%Y_%m_%d_%H') +"_"+UtcNow().strftime('%Y_%m_%d_%H_%M')  +".csv"
 snowEventSubmission = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Submissions/"
 snowEventSite = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/Sites/"
+
+
+SnowEventDetailsParq = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEventDetails.parquet"
+SnowEventDetailsCsv = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEventDetails.csv"
+
+SnowEventDetailsCsvLog = "/mnt/" + mountNameSnowEvent+ "/" +str(snowYear) + "/SnowEventDetails/SnowEventDetails"+ StrToDate(processFromDate).strftime('%Y_%m_%d_%H') +"_"+UtcNow().strftime('%Y_%m_%d_%H_%M')  +".csv"
 
 ReferenceDataFolderName ="/mnt/" +mountNameReferenceData + "/DailyUsqlTable/" ;
 
@@ -632,13 +638,18 @@ for f in dfsubmissionsProcessHourFSA.collect():
 # COMMAND ----------
 
 df= sqlContext.sql("Select * from snowEvent")
-#df.coalesce(1).write.format("spark.csv").option("header","true").save("/mnt/SnowEvent/aa.parquet")
-#df.write.option("compression", "snappy").mode("overwrite").format("com.databricks.spark.csv").option("header", "true").save("/mnt/SnowEvent/aaa.csv")
-#df.coalesce(1).write.csv("/mnt/SnowEvent/bbb.csv",header=True) 
 df.write.option("compression", "snappy").mode("overwrite").parquet(snowEventParq)  
 result_pdf = df.select("*").toPandas()
 result_pdf.to_csv("/dbfs"+snowEventCsv)
 result_pdf.to_csv("/dbfs"+snowEventCsvLog)
+
+# COMMAND ----------
+
+df= sqlContext.sql("Select * from SnowEventDetails")
+df.write.option("compression", "snappy").mode("overwrite").parquet(SnowEventDetailsParq)  
+result_pdf = df.select("*").toPandas()
+result_pdf.to_csv("/dbfs"+SnowEventDetailsCsv)
+result_pdf.to_csv("/dbfs"+SnowEventDetailsCsvLog)
 
 # COMMAND ----------
 
