@@ -59,15 +59,10 @@ print(submissionInputPath)
 
 # COMMAND ----------
 
-if any(mount.mountPoint == "/mnt/"+mountNameSubmissions for mount in dbutils.fs.mounts()):
-  print('already mounted')
-else :
-  dbutils.fs.mount(
-  source = "adl://"+storageResource+".azuredatalakestore.net/" + directoryName,
-  mount_point = "/mnt/"+mountNameSubmissions ,
-  extra_configs = configs)
-  
-  ##%fs ls "dbfs:/mnt/SubmissionsMnt/"
+configs = {"fs.adl.oauth2.access.token.provider.type": "ClientCredential",
+           "fs.adl.oauth2.client.id": applicationID,
+           "fs.adl.oauth2.credential": dbrickappdlSec,
+           "fs.adl.oauth2.refresh.url": "https://login.microsoftonline.com/"+directoryID+"/oauth2/token"}
 
 # COMMAND ----------
 
