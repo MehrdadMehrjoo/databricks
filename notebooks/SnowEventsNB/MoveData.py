@@ -94,3 +94,9 @@ sqlContext.sql(qry)
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC update AllSubmissions set siteFSA = ltrim(rtrim(siteFSA)) , siteLDU = ltrim(rtrim(ifnull(siteLDU,""))) , Region= ltrim(rtrim(Region))
+# MAGIC --select *  from AllSubmissions  where siteLDU is null
+
+# COMMAND ----------
+
