@@ -12,6 +12,7 @@ mountNameSnowEvent = "SnowEvent"
 fileSystemName = "snow"
 dttr="'HOUR'"
 maxDate = "2030-01-01 01:00:00.000"
+submissionAllInputPath = "dbfs:/mnt/"+mountNameSubmissions+"/HourlyRaw/SnowYear2020/" #*.txt
 
 
 # COMMAND ----------
@@ -39,7 +40,7 @@ snowEventParq="/mnt/SnowEvent/2020/SnowEvent.parquet"
 #df= sqlContext.sql("Select * from snowEvent")
 #df.write.option("compression", "snappy").mode("overwrite").parquet(snowEventParq)  
 try:
-  qry = 'CREATE OR REPLACE TEMPORARY VIEW snowEventTemp USING Parquet OPTIONS (path "{}")'.format("dbfs:" + snowEventParq)
+  qry = 'CREATE OR REPLACE TEMPORARY VIEW snowEventTemp1 USING Parquet OPTIONS (path "{}")'.format("dbfs:" + snowEventParq)
   #print(qry)
   sqlContext.sql(qry)
 except:
@@ -48,17 +49,8 @@ except:
 
 # COMMAND ----------
 
-SnowEventDetailsParq="/mnt/SnowEvent/2020/SnowEventDetails.parquet"
-#df= sqlContext.sql("Select * from SnowEventDetails")
-#df.write.option("compression", "snappy").mode("overwrite").parquet(SnowEventDetailsParq)  
-try:
-  qry = 'CREATE OR REPLACE TEMPORARY VIEW SnowEventDetailsTemp USING Parquet OPTIONS (path "{}")'.format("dbfs:" + SnowEventDetailsParq)
-  #print(qry)
-  sqlContext.sql(qry)
-except:
-  print('No file')
-
-
+# MAGIC %sql
+# MAGIC Drop TABLE SnowEvent
 
 # COMMAND ----------
 
@@ -69,20 +61,36 @@ except:
 
 # COMMAND ----------
 
+# MAGIC %sql 
+# MAGIC Insert into SnowEvent select * from snowEventTemp1
+
+# COMMAND ----------
+
+#days = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"]
+days = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"]
+for dd in days:
+  submissionInputPath =  "dbfs:/mnt/SubmissionsMnt/HourlyRaw/2019/11/" + dd+ "/"
+  submissionAllInputPath = "dbfs:/mnt/SubmissionsMnt/HourlyRaw/SnowYear2020/"
+  dbutils.fs.cp(submissionInputPath,submissionAllInputPath,True)
+
+
+# COMMAND ----------
+
+qry = 'CREATE  OR REPLACE TEMPORARY VIEW submissionsAll (id STRING ,CorrelationID STRING,SiteName STRING,fsa STRING,status STRING,latitude STRING,longitude STRING,siteface STRING,city STRING,Province STRING,region STRING,Address STRING,datetaken STRING,datetakenUTC STRING,CellNumber STRING,DeviceID STRING,UserName STRING,picture STRING,eventenqueuedutctime STRING,EventProcessedUtcTime STRING,PartitionId STRING,BlobName STRING,BlobLastModifiedUtcTime STRING,Accuracy STRING,UserSiteName STRING,PLatitude STRING,PLongitude STRING,siteFSA STRING,siteLDU STRING) USING CSV OPTIONS (path "{}" , header "false", mode "FAILFAST",sep "|")'.format(submissionAllInputPath+"*.txt")
+print(qry)
+sqlContext.sql(qry)
+
+# COMMAND ----------
+
 # MAGIC %sql
-# MAGIC CREATE TABLE  IF NOT EXISTS SnowEventDetails
-# MAGIC (SnowYear int ,id int , Region STRING ,FSA STRING,LDU STRING,Province STRING ,City STRING ,Address STRING ,Location STRING ,Lat STRING ,Long STRING ,SnowResponsibility STRING ,SubmissionDate TIMESTAMP) 
+# MAGIC CREATE TABLE  IF NOT EXISTS AllSubmissions
+# MAGIC (id STRING ,CorrelationID STRING,SiteName STRING,fsa STRING,status STRING,latitude STRING,longitude STRING,siteface STRING,city STRING,Province STRING,region STRING,Address STRING,datetaken TIMESTAMP,datetakenUTC TIMESTAMP,CellNumber STRING,DeviceID STRING,UserName STRING,picture STRING,eventenqueuedutctime TIMESTAMP,EventProcessedUtcTime TIMESTAMP,PartitionId STRING,BlobName STRING,BlobLastModifiedUtcTime STRING,Accuracy STRING,UserSiteName STRING,PLatitude STRING,PLongitude STRING,siteFSA STRING,siteLDU STRING)
 # MAGIC USING delta
 
 # COMMAND ----------
 
 # MAGIC %sql 
-# MAGIC Insert into SnowEvent select * from SnowEventDetailsTemp
-
-# COMMAND ----------
-
-# MAGIC %sql 
-# MAGIC Insert into SnowEventDetails select * from SnowEventDetailsTemp
+# MAGIC Insert into AllSubmissions select * from submissionsAll
 
 # COMMAND ----------
 
